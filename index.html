@@ -207,7 +207,6 @@ ul{list-style:none}
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
 </head>
 <body>
-
 <nav class="navbar">
   <div class="nav-inner">
     <div class="nav-logo"><span class="logo-icon">⬡</span><span>EvalAI</span></div>
@@ -219,7 +218,6 @@ ul{list-style:none}
     <a href="#tool" class="nav-cta">Start Free</a>
   </div>
 </nav>
-
 <section class="hero" id="home">
   <div class="hero-bg-grid"></div>
   <div class="hero-glow hero-glow-1"></div>
@@ -251,7 +249,6 @@ ul{list-style:none}
     </div>
   </div>
 </section>
-
 <section class="features" id="features">
   <div class="section-inner">
     <div class="section-label">Capabilities</div>
@@ -275,7 +272,6 @@ ul{list-style:none}
     </div>
   </div>
 </section>
-
 <section class="how-it-works" id="how-it-works">
   <div class="section-inner">
     <div class="section-label">Process</div>
@@ -291,7 +287,6 @@ ul{list-style:none}
     </div>
   </div>
 </section>
-
 <section class="tool-section" id="tool">
   <div class="section-inner">
     <div class="section-label">Evaluation Tool</div>
@@ -370,7 +365,6 @@ ul{list-style:none}
     </div>
   </div>
 </section>
-
 <footer class="footer">
   <div class="footer-inner">
     <div class="footer-logo"><span class="logo-icon">⬡</span><span>EvalAI</span></div>
@@ -381,7 +375,7 @@ ul{list-style:none}
 
 <script>
   // ============================================================
-  // YOUR BACKEND URL — connected to Gemini AI
+  // YOUR BACKEND URL — connected to Groq AI (Llama 3.3 70B)
   // ============================================================
   const BACKEND_URL = 'https://ai-evaluation-app-nu.vercel.app/api/evaluate';
 
@@ -415,6 +409,7 @@ ul{list-style:none}
       zone.classList.add('has-file'); input.value = '';
     }
   }
+
   function removeFile(key) {
     const isRef = key === 'reference';
     state[isRef ? 'referenceFile' : 'studentFile'] = null;
@@ -425,6 +420,7 @@ ul{list-style:none}
     document.getElementById(p).style.display = 'none';
     document.getElementById(c).style.display = 'flex';
   }
+
   setupUploadZone('referenceZone','referenceFile','referencePreview','referenceContent','referenceName','referenceFile');
   setupUploadZone('studentZone','studentFile','studentPreview','studentContent','studentName','studentFile');
 
@@ -441,25 +437,34 @@ ul{list-style:none}
     return text.trim();
   }
 
-  // ---- Loading ----
-  const loadingSteps = ['Extracting text from PDFs...','Analyzing reference answer...','Comparing student submission...','Computing similarity score...','Generating detailed feedback...'];
+  // ---- Loading (updated for Groq) ----
+  const loadingSteps = [
+    'Extracting text from PDFs...',
+    'Groq AI analyzing reference answer...',
+    'Comparing student submission...',
+    'Computing similarity score...',
+    'Generating detailed feedback...'
+  ];
   let loadingInterval = null;
+
   function startLoading() {
     document.getElementById('evaluateBtn').style.display = 'none';
     document.getElementById('loadingState').style.display = 'block';
     let step = 0, progress = 0;
     document.getElementById('loadingStep').textContent = loadingSteps[0];
     loadingInterval = setInterval(() => {
-      progress = Math.min(progress + Math.random() * 12, 90);
+      progress = Math.min(progress + Math.random() * 15, 95);
       document.getElementById('loadingBar').style.width = progress + '%';
       if (step < loadingSteps.length - 1) document.getElementById('loadingStep').textContent = loadingSteps[++step];
-    }, 900);
+    }, 650);
   }
+
   function finishLoading() {
     clearInterval(loadingInterval);
     document.getElementById('loadingBar').style.width = '100%';
     setTimeout(() => document.getElementById('loadingState').style.display = 'none', 400);
   }
+
   function resetLoading() {
     clearInterval(loadingInterval);
     document.getElementById('loadingState').style.display = 'none';
@@ -468,7 +473,7 @@ ul{list-style:none}
     document.getElementById('loadingBar').style.width = '0%';
   }
 
-  // ---- Call Gemini Backend ----
+  // ---- Call Backend ----
   async function callBackend(referenceText, studentText, maxMarks) {
     const response = await fetch(BACKEND_URL, {
       method: 'POST',
@@ -507,11 +512,13 @@ ul{list-style:none}
     document.getElementById('resultsSection').style.display = 'block';
     document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+
   function renderList(id, items) {
     const ul = document.getElementById(id);
     ul.innerHTML = items.length ? '' : '<li>No data available.</li>';
     items.forEach(item => { const li = document.createElement('li'); li.textContent = item; ul.appendChild(li); });
   }
+
   function animateCounter(elId, from, to, duration) {
     const el = document.getElementById(elId);
     const start = performance.now();
@@ -582,7 +589,7 @@ ul{list-style:none}
     }
   }
 
-  // Smooth scroll
+  // Smooth scroll & scroll reveal
   document.querySelectorAll('a[href^="#"]').forEach(link => {
     link.addEventListener('click', e => {
       const t = document.querySelector(link.getAttribute('href'));
@@ -590,7 +597,6 @@ ul{list-style:none}
     });
   });
 
-  // Scroll reveal
   const obs = new IntersectionObserver(entries => {
     entries.forEach(e => { if (e.isIntersecting) { e.target.style.opacity='1'; e.target.style.transform='translateY(0)'; obs.unobserve(e.target); } });
   }, { threshold: 0.1 });
@@ -601,6 +607,3 @@ ul{list-style:none}
 </script>
 </body>
 </html>
-
-
-
