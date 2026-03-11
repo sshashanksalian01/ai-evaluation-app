@@ -1,5 +1,4 @@
 module.exports = async function handler(req, res) {
-
   // ✅ CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -24,29 +23,31 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'GROQ_API_KEY not configured in environment variables.' });
   }
 
-  const prompt = `You are an expert academic evaluator. Evaluate the student's answer against the reference answer.
+  const systemPrompt = `You are a strict, fair university professor. 
+Evaluate the student's answer against the reference answer.
+Return ONLY a valid JSON object. No markdown, no explanation, no extra text.`;
 
-REFERENCE ANSWER (Answer Key):
+  const userPrompt = `REFERENCE ANSWER (Answer Key):
 """
-${String(referenceAnswer).substring(0, 3000)}
+${String(referenceAnswer).substring(0, 4000)}
 """
 
-STUDENT ANSWER (Submission):
+STUDENT ANSWER:
 """
-${String(studentAnswer).substring(0, 3000)}
+${String(studentAnswer).substring(0, 4000)}
 """
 
 MAXIMUM MARKS: ${maxMarks}
 
-Respond ONLY with a valid JSON object — no markdown, no extra text, no code fences:
+Respond with this exact JSON format:
 {
-  "score": <number between 0 and ${maxMarks}>,
-  "similarity_percentage": <number between 0 and 100>,
-  "grade": "<A+ / A / B / C / D / F>",
-  "strengths": ["<point 1>", "<point 2>", "<point 3>"],
-  "missing_concepts": ["<concept 1>", "<concept 2>", "<concept 3>"],
-  "suggestions": ["<suggestion 1>", "<suggestion 2>", "<suggestion 3>"],
-  "overall_feedback": "<2-3 sentence overall assessment>"
+  "score": <integer between 0 and ${maxMarks}>,
+  "similarity_percentage": <integer 0-100>,
+  "grade": "A+" or "A" or "B+" or "B" or "C" or "F",
+  "strengths": ["point 1", "point 2", "point 3"],
+  "missing_concepts": ["concept 1", "concept 2"],
+  "suggestions": ["suggestion 1", "suggestion 2"],
+  "overall_feedback": "2-3 sentence overall assessment"
 }`;
 
   try {
@@ -59,41 +60,39 @@ Respond ONLY with a valid JSON object — no markdown, no extra text, no code fe
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [
-          {
-            role: 'system',
-            content: 'You are an expert academic evaluator. Always respond with valid JSON only — no markdown, no extra text.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
         ],
-        temperature: 0.3,
-        max_tokens: 1000
+        temperature: 0.1,
+        max_tokens: 1200,
+        response_format: { type: "json_object" }   // ← This forces clean JSON
       })
     });
 
     if (!groqRes.ok) {
       const errData = await groqRes.json().catch(() => ({}));
-      return res.status(502).json({ error: 'Groq API error: ' + (errData?.error?.message || groqRes.status) });
+      return res.status(502).json({ 
+        error: 'Groq API error: ' + (errData?.error?.message || groqRes.status) 
+      });
     }
 
     const groqData = await groqRes.json();
     const rawText = groqData?.choices?.[0]?.message?.content || '';
 
-    // Strip markdown fences if present
-    const cleaned = rawText.replace(/```json|```/g, '').trim();
-
     let result;
     try {
-      result = JSON.parse(cleaned);
-    } catch {
+      result = JSON.parse(rawText.trim());
+    } catch (parseErr) {
       return res.status(500).json({ error: 'AI returned unexpected format. Please try again.' });
     }
+
+    // Safety clamp
+    result.score = Math.min(Math.max(Math.floor(result.score || 0), 0), maxMarks);
 
     return res.status(200).json(result);
 
   } catch (err) {
+    console.error(err);
     return res.status(500).json({ error: 'Server error: ' + err.message });
   }
 };
