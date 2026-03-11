@@ -1,11 +1,10 @@
 module.exports = async function handler(req, res) {
 
-  // ✅ CORS — allow requests from any frontend
+  // ✅ CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight request (browser sends this before POST)
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -20,9 +19,9 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Missing referenceAnswer, studentAnswer, or maxMarks.' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY not configured in environment variables.' });
+    return res.status(500).json({ error: 'GROQ_API_KEY not configured in environment variables.' });
   }
 
   const prompt = `You are an expert academic evaluator. Evaluate the student's answer against the reference answer.
@@ -39,7 +38,7 @@ ${String(studentAnswer).substring(0, 3000)}
 
 MAXIMUM MARKS: ${maxMarks}
 
-Respond ONLY with a valid JSON object — no markdown, no extra text:
+Respond ONLY with a valid JSON object — no markdown, no extra text, no code fences:
 {
   "score": <number between 0 and ${maxMarks}>,
   "similarity_percentage": <number between 0 and 100>,
@@ -51,25 +50,36 @@ Respond ONLY with a valid JSON object — no markdown, no extra text:
 }`;
 
   try {
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1000 }
-        })
-      }
-    );
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert academic evaluator. Always respond with valid JSON only — no markdown, no extra text.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 1000
+      })
+    });
 
-    if (!geminiRes.ok) {
-      const errData = await geminiRes.json().catch(() => ({}));
-      return res.status(502).json({ error: 'Gemini API error: ' + (errData?.error?.message || geminiRes.status) });
+    if (!groqRes.ok) {
+      const errData = await groqRes.json().catch(() => ({}));
+      return res.status(502).json({ error: 'Groq API error: ' + (errData?.error?.message || groqRes.status) });
     }
 
-    const geminiData = await geminiRes.json();
-    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const groqData = await groqRes.json();
+    const rawText = groqData?.choices?.[0]?.message?.content || '';
 
     // Strip markdown fences if present
     const cleaned = rawText.replace(/```json|```/g, '').trim();
@@ -87,4 +97,3 @@ Respond ONLY with a valid JSON object — no markdown, no extra text:
     return res.status(500).json({ error: 'Server error: ' + err.message });
   }
 };
-
