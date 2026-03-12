@@ -1,7 +1,7 @@
 {
   "name": "evalai-backend",
   "version": "1.0.0",
-  "description": "EvalAI — AI Assignment Evaluation Backend using Google Gemini",
+  "description": "EvalAI — AI Assignment Evaluation Backend using Groq AI (Llama 3.3 70B)",
   "main": "api/index.js",
   "scripts": {
     "dev": "vercel dev",
@@ -14,7 +14,7 @@
   "engines": {
     "node": ">=18.x"
   },
-  "keywords": ["evalai", "gemini", "assignment-evaluation", "ai"],
+  "keywords": ["evalai", "groq", "assignment-evaluation", "ai", "llama3"],
   "author": "EvalAI Project",
   "license": "MIT"
 }
