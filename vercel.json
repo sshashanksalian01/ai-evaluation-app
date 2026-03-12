@@ -1,6 +1,5 @@
 {
-  "version": 3,
-  "name": "evalai-backend",
+  "version": 2,
   "functions": {
     "api/*.js": {
       "maxDuration": 60
